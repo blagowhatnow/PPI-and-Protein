@@ -123,10 +123,10 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     coulomb_energy_joules = (epsilon_0_value * abs(charge1) * abs(charge2)) / distance_in_meters
 
     # Convert to kJ/mol: multiply by Avogadro's number and divide by 1000 to convert from J to kJ
-    coulomb_energy_kJmol = coulomb_energy_joules * (6.022e23) / 1000  # in kJ/mol
+    coulomb_term = coulomb_energy_joules * (6.022e23) / 1000  # in kJ/mol
 
     # Return the Lennard-Jones term and Coulomb term in kJ/mol
-    return lj_term, coulomb_energy_kJmol
+    return lj_term, coulomb_term
 
 def align_sequences(sequences):
     """Iteratively align sequences using Needleman-Wunsch to build an MSA and return the alignment score matrix."""
