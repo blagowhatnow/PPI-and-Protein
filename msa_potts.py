@@ -73,8 +73,13 @@ def calculate_residue_interaction(modeller, system):
             interaction_matrix[i, j] = interaction_matrix[j, i] = interaction_energy.value_in_unit(unit.kilojoule_per_mole)
     return interaction_matrix
 
+from math import sqrt
+import numpy as np
+from openmm import unit
+
 def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     """Calculate the interaction energy between two atoms."""
+    
     # Get parameters for both atoms
     params1 = nonbonded_force.getParticleParameters(index1)
     params2 = nonbonded_force.getParticleParameters(index2)
@@ -84,10 +89,10 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     charge2 = params2[0].value_in_unit(unit.elementary_charge)  # Charge in Coulombs
     
     # Epsilon and sigma are extracted in their respective units
-    epsilon1 = params1[1].value_in_unit(unit.nanometers)  # Epsilon in nanometers
-    epsilon2 = params2[1].value_in_unit(unit.nanometers)  # Epsilon in nanometers
-    sigma1 = params1[2].value_in_unit(unit.kilojoule_per_mole)  # Sigma in kJ/mol
-    sigma2 = params2[2].value_in_unit(unit.kilojoule_per_mole)  # Sigma in kJ/mol
+    epsilon1 = params1[1].value_in_unit(unit.kilojoule_per_mole)  # Epsilon in kJ/mol
+    epsilon2 = params2[1].value_in_unit(unit.kilojoule_per_mole)  # Epsilon in kJ/mol
+    sigma1 = params1[2].value_in_unit(unit.nanometers)  # Sigma in nanometers
+    sigma2 = params2[2].value_in_unit(unit.nanometers)  # Sigma in nanometers
 
     # Positions of the atoms (in OpenMM's default unit, which is nanometers)
     pos1, pos2 = positions[index1], positions[index2]
@@ -98,7 +103,7 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     # Now, calculate the interaction using Lennard-Jones and Coulomb's Law
     epsilon = sqrt(epsilon1 * epsilon2)  # Epsilon is energy (kJ/mol)
 
-    # Average sigma (in angstroms)
+    # Average sigma (in nanometers)
     sigma = (sigma1 + sigma2) / 2.0
 
     # Convert epsilon to a Quantity in kJ/mol (to match units)
@@ -108,20 +113,20 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     distance_in_angstroms = distance * 10  # Convert nanometers to angstroms for Lennard-Jones calculation
     lj_term = 4 * epsilon_quantity * ((sigma / distance_in_angstroms) ** 12 - (sigma / distance_in_angstroms) ** 6)
 
-    # Coulomb's law constant (in proper units for kJ/mol)
-    epsilon_0_value = 8.854e-3  # raw numerical value of epsilon_0 in kJ·mol⁻¹·nm⁻³·C⁻²
+    # Coulomb's law constant (in SI units: C²·N⁻¹·m⁻²)
+    epsilon_0_value = 8.854e-12  # Coulomb constant in C²·N⁻¹·m⁻² (SI units)
 
-    # Convert distance_in_angstroms back to nanometers for the Coulomb term calculation
-    distance_in_nanometers = distance_in_angstroms / 10  # Convert back from angstroms to nanometers
+    # Convert distance from nm to meters (1 nm = 1e-9 m)
+    distance_in_meters = distance * 1e-9
 
-    # Calculate Coulomb term using distance in nanometers, and ensuring it's dimensionless
-    coulomb_term_raw = (charge1 * charge2) / (4 * np.pi * epsilon_0_value * distance_in_nanometers)
+    # Calculate the Coulomb energy in Joules (using Coulomb's law)
+    coulomb_energy_joules = (epsilon_0_value * abs(charge1) * abs(charge2)) / distance_in_meters
 
-    # Now we have a dimensionless Coulomb term; we convert it to kJ/mol
-    coulomb_term = coulomb_term_raw * unit.kilojoule_per_mole  # Convert to kJ/mol
+    # Convert to kJ/mol: multiply by Avogadro's number and divide by 1000 to convert from J to kJ
+    coulomb_energy_kJmol = coulomb_energy_joules * (6.022e23) / 1000  # in kJ/mol
 
-    # Now both terms are in kilojoule/mol, so we can safely return them
-    return lj_term, coulomb_term
+    # Return the Lennard-Jones term and Coulomb term in kJ/mol
+    return lj_term, coulomb_energy_kJmol
 
 def align_sequences(sequences):
     """Iteratively align sequences using Needleman-Wunsch to build an MSA and return the alignment score matrix."""
