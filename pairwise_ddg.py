@@ -66,8 +66,8 @@ def run_md_simulation(modeller, system, steps=100):
     return final_positions, potential_energy, simulation
 
 def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * unit.kelvin):
-    """Calculate the Gibbs free energy from potential energy and entropy."""
-    # Calculate the entropy (approximated by fluctuations in potential energy)
+    """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
+    # Collect energy values for fluctuation estimation
     energy_values = []
     for _ in range(10):  # Run multiple steps to collect potential energies for fluctuation estimation
         state = simulation.context.getState(getEnergy=True)
@@ -75,15 +75,21 @@ def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * 
     
     energy_values = np.array(energy_values)
     mean_energy = np.mean(energy_values)
-    energy_fluctuation = np.std(energy_values)  # Standard deviation is an estimate of entropy
     
-    # Entropy contribution (S = k_B * std(energy))
+    # Energy fluctuation and heat capacity approximation (using fluctuation-dissipation theorem)
+    energy_fluctuation = np.std(energy_values)
     k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # Convert to kJ/mol/K for consistency
-    entropy = k_B * energy_fluctuation
-    
+
+    # Heat capacity estimation (C_V ~ energy fluctuation)
+    heat_capacity = energy_fluctuation / (temperature**2)
+
+    # Now calculate entropy based on heat capacity (S = ∆H / T - C_v * ln(T))
+    entropy = k_B * heat_capacity * np.log(temperature / unit.kelvin)  # Approximate entropy from heat capacity
+
     # Calculate Gibbs free energy: G = U + TS
     gibbs_free_energy = mean_energy + temperature * entropy
     return gibbs_free_energy
+
 
 def calculate_ddg(gibbs_free_energy_1, gibbs_free_energy_2):
     """Calculate the ΔΔG (Delta Delta G) between two Gibbs free energies."""
