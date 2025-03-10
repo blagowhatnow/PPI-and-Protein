@@ -1,6 +1,5 @@
-#This code is experimental 
-#Might need further review
-
+# This code is experimental 
+# Might need further review
 
 import openmm
 from openmm import app, unit
@@ -65,15 +64,24 @@ def run_md_simulation(modeller, system, steps=100):
     print(f"Final potential energy: {potential_energy}")
     return final_positions, potential_energy, simulation
 
-def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * unit.kelvin):
-    """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
-    # Collect energy values for fluctuation estimation
+def collect_energy_samples(simulation, num_samples=1000, interval=100):
+    """Collect energy samples over the course of the simulation at regular intervals."""
     energy_values = []
-    for _ in range(10):  # Run multiple steps to collect potential energies for fluctuation estimation
+    
+    # Run the simulation for a longer period (e.g., 100,000 steps)
+    for step in range(0, num_samples * interval, interval):
+        simulation.step(interval)  # Advance the simulation
         state = simulation.context.getState(getEnergy=True)
         energy_values.append(state.getPotentialEnergy())
     
     energy_values = np.array(energy_values)
+    return energy_values
+
+def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * unit.kelvin):
+    """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
+    # Collect energy values for fluctuation estimation over a larger portion of the simulation
+    energy_values = collect_energy_samples(simulation, num_samples=1000, interval=100)
+    
     mean_energy = np.mean(energy_values)
     
     # Energy fluctuation and heat capacity approximation (using fluctuation-dissipation theorem)
