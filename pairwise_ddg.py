@@ -71,8 +71,9 @@ def collect_energy_samples(simulation, num_samples=1000, interval=100):
     # Run the simulation for a longer period (e.g., 100,000 steps)
     for step in range(0, num_samples * interval, interval):
         simulation.step(interval)  # Advance the simulation
-        state = simulation.context.getState(getEnergy=True)
-        energy_values.append(state.getPotentialEnergy())
+        state = simulation.context.getState(getEnergy=True, getKineticEnergy=True)
+        total_energy = state.getPotentialEnergy() + state.getKineticEnergy()
+        energy_values.append(total_energy)
     
     energy_values = np.array(energy_values)
     return energy_values
