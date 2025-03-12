@@ -110,7 +110,7 @@ def OPLS_LJ(system):
         charge, sigma, epsilon = nonbonded_force.getParticleParameters(index)
         LJset[index] = (sigma, epsilon)
         lorentz.addParticle([sigma, epsilon])
-        nonbonded_force.setParticleParameters(index, charge, sigma, epsilon * 0)
+        #nonbonded_force.setParticleParameters(index, charge, sigma, epsilon * 0)
 
     for i in range(nonbonded_force.getNumExceptions()):
         (p1, p2, q, sig, eps) = nonbonded_force.getExceptionParameters(i)
