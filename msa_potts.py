@@ -110,16 +110,25 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     # Convert lj_term to kJ/mol (it should already be in kJ/mol if sigma is correct)
     lj_term = lj_term * unit.kilojoule_per_mole  # Ensure it's in kJ/mol
 
-    # Coulomb's law constant (in SI units: C²·N⁻¹·m⁻²)
-    epsilon_0_value = 8.854e-12  # Coulomb constant in C²·N⁻¹·m⁻² (SI units)
+    # Convert charges to Coulombs if they are in elementary charges
+    charge1_coulombs = charge1 * 1.602e-19  # Convert charge1 to Coulombs
+    charge2_coulombs = charge2 * 1.602e-19  # Convert charge2 to Coulombs
 
-    # Convert distance from nm to meters (1 nm = 1e-9 m)
-    distance_in_meters = distance * 1e-9
+    # Coulomb's law constant in C²·N⁻¹·m⁻²
+    epsilon_0_value = 8.854e-12  # Coulomb's constant in SI units
 
-    # Calculate the Coulomb energy in Joules (using Coulomb's law)
-    coulomb_term = (epsilon_0_value * abs(charge1) * abs(charge2)) / distance_in_meters
-    
-    coulomb_term= coulomb_term * unit.kilojoule_per_mole / 1000 # in kJ/mol
+    # Convert distance from nm to meters
+    distance_in_meters = distance * 1e-9  # Convert distance to meters
+
+    # Calculate Coulomb energy in Joules using Coulomb's law
+    coulomb_energy_joules = (epsilon_0_value * abs(charge1_coulombs) * abs(charge2_coulombs)) / distance_in_meters
+
+    # Convert from Joules to kJ/mol
+    coulomb_energy_kj_per_mol = (coulomb_energy_joules / 1000) * (6.022e23)  # Multiply by Avogadro's number
+
+    # Optionally, you can use OpenMM's units (if working with OpenMM units) to handle conversion
+    coulomb_term = coulomb_energy_kj_per_mol * unit.kilojoule_per_mole
+
     
     # Return the Lennard-Jones term and Coulomb term in kJ/mol
     return lj_term, coulomb_term
