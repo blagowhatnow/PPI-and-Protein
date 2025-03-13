@@ -77,37 +77,34 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force):
     params1 = nonbonded_force.getParticleParameters(index1)
     params2 = nonbonded_force.getParticleParameters(index2)
     
-    # Extract charge, epsilon (distance), and sigma (energy) from params1 and params2
+    # Extract charge, sigma (distance), and epsilon (energy) from params1 and params2
     charge1 = params1[0].value_in_unit(unit.elementary_charge)  # Charge in Coulombs
     charge2 = params2[0].value_in_unit(unit.elementary_charge)  # Charge in Coulombs
     
-    # Epsilon in nanometers (distance scale for interaction potential)
-    epsilon1 = params1[1].value_in_unit(unit.nanometer)  # Epsilon in nanometers (distance scale)
-    epsilon2 = params2[1].value_in_unit(unit.nanometer)  # Epsilon in nanometers (distance scale)
+    # Sigma in nanometers (distance scale for interaction potential)
+    sigma1 = params1[1].value_in_unit(unit.nanometer)  # Sigma in nm (distance scale)
+    sigma2 = params2[1].value_in_unit(unit.nanometer)  # Sigma in nm (distance scale)
     
-    # Sigma in joules per mole (energy scale for interaction potential)
-    sigma1 = params1[2].value_in_unit(unit.kilojoule_per_mole)  # Sigma in kJ/mol (energy scale)
-    sigma2 = params2[2].value_in_unit(unit.kilojoule_per_mole)  # Sigma in kJ/mol (energy scale)
+    # Epsilon in kilojoules per mole (energy scale for interaction potential)
+    epsilon1 = params1[2].value_in_unit(unit.kilojoule_per_mole)  # Epsilon in kJ/mol (energy scale)
+    epsilon2 = params2[2].value_in_unit(unit.kilojoule_per_mole)  # Epsilon in kJ/mol (energy scale)
 
     # Positions of the atoms (in nanometers)
     pos1, pos2 = positions[index1], positions[index2]
     
     # Calculate the distance between atoms in nanometers
-    distance = calculate_distance(pos1, pos2)  # Distance in nanometers
+    distance = calculate_distance(pos1, pos2)  # Distance in nm
     
     # Now, calculate the interaction using Lennard-Jones and Coulomb's Law
     
-    # Calculate epsilon (distance scale) using the geometric mean of epsilon1 and epsilon2
-    epsilon = sqrt(epsilon1 * epsilon2)  # Epsilon in nanometers (distance scale)
+    # Calculate epsilon (energy scale) using the geometric mean of epsilon1 and epsilon2
+    epsilon = sqrt(epsilon1 * epsilon2)  # Epsilon in kJ/mol
     
-    # Average sigma (energy scale in kilojoules per mole)
-    sigma = (sigma1 + sigma2) / 2.0  # Sigma in kJ/mol
+    # Average sigma (distance scale in nm)
+    sigma = (sigma1 + sigma2) / 2.0  # Sigma in nm
     
-    # Lennard-Jones term: energy term depends on distance in angstroms
-    distance_in_angstroms = distance * 10  # Convert nanometers to angstroms
-    lj_term = 4 * sigma * ((epsilon / distance_in_angstroms) ** 12 - (epsilon / distance_in_angstroms) ** 6)
-
-    # Convert lj_term to kJ/mol (it should already be in kJ/mol if sigma is correct)
+    # Lennard-Jones term: energy term depends on distance in nanometers
+    lj_term = 4 * epsilon * ((sigma / distance) ** 12 - (sigma / distance) ** 6)
     lj_term = lj_term * unit.kilojoule_per_mole  # Ensure it's in kJ/mol
 
     # Convert charges to Coulombs if they are in elementary charges
