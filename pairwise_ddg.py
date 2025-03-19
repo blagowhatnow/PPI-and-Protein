@@ -64,11 +64,10 @@ def run_md_simulation(modeller, system, steps=100):
     print(f"Final potential energy: {potential_energy}")
     return final_positions, potential_energy, simulation
 
-def collect_energy_samples(simulation, num_samples=1000, interval=100):
-    """Collect energy samples over the course of the simulation at regular intervals."""
+def collect_energy_samples(simulation, num_samples=5000, interval=100):
+    """Collect a larger number of energy samples."""
     energy_values = []
     
-    # Run the simulation for a longer period (e.g., 100,000 steps)
     for step in range(0, num_samples * interval, interval):
         simulation.step(interval)  # Advance the simulation
         state = simulation.context.getState(getEnergy=True, getKineticEnergy=True)
@@ -78,27 +77,48 @@ def collect_energy_samples(simulation, num_samples=1000, interval=100):
     energy_values = np.array(energy_values)
     return energy_values
 
+def calculate_heat_capacity(energy_values, temperature):
+    """Calculate the heat capacity from energy fluctuations."""
+    mean_energy = np.mean(energy_values)
+    mean_energy_squared = np.mean(energy_values**2)
+    
+    # Energy fluctuation
+    energy_fluctuation = mean_energy_squared - mean_energy**2
+    
+    # Heat capacity: C_V = ( <E^2> - <E>^2 ) / (k_B * T^2)
+    k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # Convert to kJ/mol/K
+    heat_capacity = energy_fluctuation / (k_B * temperature**2)
+    
+    return heat_capacity
+
+def calculate_entropy(energy_values, temperature):
+    """Calculate entropy from energy fluctuations."""
+    heat_capacity = calculate_heat_capacity(energy_values, temperature)
+    
+    # Entropy: S = k_B * C_V * ln(T / T_0)
+    # T_0 is the reference temperature, typically 300 K
+    T_0 = 300 * unit.kelvin  # Reference temperature in Kelvin
+    k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # Convert to kJ/mol/K
+    
+    # Calculate entropy
+    entropy = k_B * heat_capacity * np.log(temperature / T_0)
+    
+    return entropy
+
 def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * unit.kelvin):
     """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
+    
     # Collect energy values for fluctuation estimation over a larger portion of the simulation
     energy_values = collect_energy_samples(simulation, num_samples=1000, interval=100)
     
     mean_energy = np.mean(energy_values)
     
-    # Energy fluctuation and heat capacity approximation (using fluctuation-dissipation theorem)
-    energy_fluctuation = np.std(energy_values)
-    k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # Convert to kJ/mol/K for consistency
-
-    # Heat capacity estimation (C_V ~ energy fluctuation)
-    heat_capacity = energy_fluctuation / (temperature**2)
-
-    # Now calculate entropy based on heat capacity (S = ∆H / T - C_v * ln(T))
-    entropy = k_B * heat_capacity * np.log(temperature / unit.kelvin)  # Approximate entropy from heat capacity
-
+    # Calculate entropy using the refined calculation
+    entropy = calculate_entropy(energy_values, temperature)
+    
     # Calculate Gibbs free energy: G = U + TS
     gibbs_free_energy = mean_energy + temperature * entropy
     return gibbs_free_energy
-
 
 def calculate_ddg(gibbs_free_energy_1, gibbs_free_energy_2):
     """Calculate the ΔΔG (Delta Delta G) between two Gibbs free energies."""
