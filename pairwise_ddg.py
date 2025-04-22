@@ -105,7 +105,7 @@ def calculate_entropy(energy_values, temperature):
     
     return entropy
 
-def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * unit.kelvin):
+def calculate_gibbs_free_energy(potential_energy, simulation, temperature=310 * unit.kelvin):
     """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
     
     # Collect energy values for fluctuation estimation over a larger portion of the simulation
@@ -116,8 +116,8 @@ def calculate_gibbs_free_energy(potential_energy, simulation, temperature=300 * 
     # Calculate entropy using the refined calculation
     entropy = calculate_entropy(energy_values, temperature)
     
-    # Calculate Gibbs free energy: G = U + TS
-    gibbs_free_energy = mean_energy + temperature * entropy
+    # Calculate Gibbs free energy: G = U - TS
+    gibbs_free_energy = mean_energy - temperature * entropy
     return gibbs_free_energy
 
 def calculate_ddg(gibbs_free_energy_1, gibbs_free_energy_2):
