@@ -91,20 +91,6 @@ def calculate_heat_capacity(energy_values, temperature):
     
     return heat_capacity
 
-def calculate_entropy(energy_values, temperature):
-    """Calculate entropy from energy fluctuations."""
-    heat_capacity = calculate_heat_capacity(energy_values, temperature)
-    
-    # Entropy: S = k_B * C_V * ln(T / T_0)
-    # T_0 is the reference temperature, typically 300 K
-    T_0 = 300 * unit.kelvin  # Reference temperature in Kelvin
-    k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # Convert to kJ/mol/K
-    
-    # Calculate entropy
-    entropy = k_B * heat_capacity * np.log(temperature / T_0)
-    
-    return entropy
-
 def calculate_gibbs_free_energy(potential_energy, simulation, temperature=310 * unit.kelvin):
     """Calculate the Gibbs free energy from potential energy and entropy (approximated by fluctuations)."""
     
@@ -116,14 +102,16 @@ def calculate_gibbs_free_energy(potential_energy, simulation, temperature=310 * 
     # Calculate entropy using the refined calculation
     entropy = calculate_entropy(energy_values, temperature)
     
-    # Calculate Gibbs free energy: G = U - TS
+    # Calculate Gibbs free energy: ΔG = U - TΔS
     gibbs_free_energy = mean_energy - temperature * entropy
     return gibbs_free_energy
+
 
 def calculate_ddg(gibbs_free_energy_1, gibbs_free_energy_2):
     """Calculate the ΔΔG (Delta Delta G) between two Gibbs free energies."""
     delta_delta_g = gibbs_free_energy_2 - gibbs_free_energy_1
     return delta_delta_g
+
 
 def process_ddg_optimized(sequences, pdb_files):
     """Optimized function to calculate ΔΔG for each sequence against the wildtype."""
