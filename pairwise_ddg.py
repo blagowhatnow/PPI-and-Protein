@@ -16,8 +16,16 @@ def load_pdb_structure(pdb_file):
     modeller = app.Modeller(pdb.topology, pdb.positions)
     # Solvate the system with TIP3P water model
     modeller.addSolvent(forcefield, model='tip3p', padding=1.0 * unit.nanometer)  # Solvate with water around the system    
-    system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.NoCutoff)
+    system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.PME, nonbondedCutoff=1.0*unit.nanometers)
     return modeller, system
+
+def calculate_entropy(energy_values, temperature):
+    k_B = unit.BOLTZMANN_CONSTANT_kB * 1e-3  # kJ/mol/K
+    energy_values = np.array([e.value_in_unit(unit.kilojoule_per_mole) for e in energy_values])
+    fluct = np.var(energy_values)
+    C_v = fluct / (k_B * temperature.value_in_unit(unit.kelvin) ** 2)
+    S = C_v * np.log(temperature.value_in_unit(unit.kelvin))  # crude approximation
+    return S * unit.kilojoule_per_mole / unit.kelvin
 
 def run_equilibration(modeller, system, steps=5000, temperature=300 * unit.kelvin):
     """Equilibrate the system before the main MD simulation."""
@@ -25,10 +33,9 @@ def run_equilibration(modeller, system, steps=5000, temperature=300 * unit.kelvi
     integrator = openmm.LangevinIntegrator(temperature, 1 / unit.picosecond, 0.002 * unit.picoseconds)
     simulation = app.Simulation(modeller.topology, system, integrator)
     simulation.context.setPositions(modeller.positions)
-    
+    simulation.context.setVelocitiesToTemperature(temperature)
     # Add reporters for energy and temperature during equilibration
     simulation.reporters.append(app.StateDataReporter('equilibration_output.log', 1000, step=True, potentialEnergy=True, temperature=True))
-    
     print(f"Running equilibration for {steps} steps...")
     simulation.step(steps)  # Run equilibration
     
@@ -46,7 +53,7 @@ def run_md_simulation(modeller, system, steps=100):
     integrator = openmm.LangevinIntegrator(300 * unit.kelvin, 1 / unit.picosecond, 0.002 * unit.picoseconds)
     simulation = app.Simulation(modeller.topology, system, integrator)
     simulation.context.setPositions(modeller.positions)
-    
+    simulation.context.setVelocitiesToTemperature(300 * unit.kelvin)
     # Adding a reporter to write out data
     simulation.reporters.append(app.StateDataReporter('output.log', 1000, step=True, potentialEnergy=True, temperature=True))
     
