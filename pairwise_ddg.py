@@ -5,6 +5,7 @@ from openmm import app, unit
 import os
 import numpy as np
 
+np.random.seed(42)
 
 def load_pdb_structure(pdb_file):
     """Load a PDB structure and create an OpenMM system."""
