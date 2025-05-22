@@ -1,5 +1,4 @@
 # This code is experimental and under review
-
 import openmm
 from openmm import app, unit
 import os
