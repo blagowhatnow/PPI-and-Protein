@@ -21,6 +21,7 @@ def load_pdb_structure(pdb_file):
         modeller.topology,
         nonbondedMethod=app.PME,
         nonbondedCutoff=1.0 * unit.nanometer
+        constraints=app.HBonds
     )
     
     return modeller, system
