@@ -210,7 +210,7 @@ def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, in
 
             # Interaction terms based on sequence alignment (evolutionary)
             if seq1[i] != seq2[i] and seq1[j] != seq2[j]:
-                energy += alignment_score  # Evolutionary term (alignment score)
+               energy += alignment_score  # Evolutionary term (alignment score)
 
             # Interaction terms based on physical residue-residue interactions (from OpenMM)
             energy += interaction_matrix_1[i, j]  # Physical interaction term from first PDB
