@@ -183,12 +183,7 @@ def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, in
     # Convert back to Seq objects after padding
     seq1 = Seq(seq1)
     seq2 = Seq(seq2)
-    
-    # Pad the alignment and interaction matrices to the same length
-    alignment_matrix = np.pad(alignment_matrix, ((0, max_len - alignment_matrix.shape[0]), 
-                                                 (0, max_len - alignment_matrix.shape[1])), 
-                              mode='constant', constant_values=0)
-    
+     
     interaction_matrix_1 = np.pad(interaction_matrix_1, ((0, max_len - interaction_matrix_1.shape[0]), 
                                                          (0, max_len - interaction_matrix_1.shape[1])), 
                                   mode='constant', constant_values=0)
@@ -210,7 +205,7 @@ def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, in
 
             # Interaction terms based on sequence alignment (evolutionary)
             if seq1[i] != seq2[i] and seq1[j] != seq2[j]:
-               energy += alignment_score  # Evolutionary term (alignment score)
+               energy += alignment_score / seq_length  # Evolutionary term (alignment score)
 
             # Interaction terms based on physical residue-residue interactions (from OpenMM)
             energy += interaction_matrix_1[i, j]  # Physical interaction term from first PDB
