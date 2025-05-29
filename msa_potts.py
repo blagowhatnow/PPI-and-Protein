@@ -172,7 +172,7 @@ def align_sequences(sequences):
 
     return msa, alignment_matrix
 
-def calculate_potts_energy(seq1, seq2, alignment_matrix, interaction_matrix_1, interaction_matrix_2):
+def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, interaction_matrix_2):
     """Calculate the Potts model energy for two sequences based on alignment scores and physical interactions."""
     
     # Ensure sequences are the same length before proceeding
@@ -210,7 +210,7 @@ def calculate_potts_energy(seq1, seq2, alignment_matrix, interaction_matrix_1, i
 
             # Interaction terms based on sequence alignment (evolutionary)
             if seq1[i] != seq2[i] and seq1[j] != seq2[j]:
-                energy += alignment_matrix[i, j]  # Evolutionary term (alignment score)
+                energy += alignment_score  # Evolutionary term (alignment score)
 
             # Interaction terms based on physical residue-residue interactions (from OpenMM)
             energy += interaction_matrix_1[i, j]  # Physical interaction term from first PDB
@@ -245,8 +245,11 @@ def calculate_msa_fitness(msa, pdb_files, alignment_matrix, max_workers=4):
                 alignment_2 = interaction_matrices[pdb_file_2]
 
                 # Submit Potts energy calculation for each pair of sequences and their corresponding interaction matrices
-                futures[(i, j)] = executor.submit(calculate_potts_energy, seq1, seq2, alignment_matrix, 
-                                                  interaction_matrices[pdb_file_1], interaction_matrices[pdb_file_2])
+                alignment_score = alignment_matrix[i, j]
+                futures[(i, j)] = executor.submit(
+                            calculate_potts_energy, seq1, seq2, alignment_score,
+                            interaction_matrices[pdb_file_1], interaction_matrices[pdb_file_2]
+                            )
 
         # Collect results from futures
         for pair, future in futures.items():
