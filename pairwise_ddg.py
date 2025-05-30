@@ -20,7 +20,7 @@ def load_pdb_structure(pdb_file):
     system = forcefield.createSystem(
         modeller.topology,
         nonbondedMethod=app.PME,
-        nonbondedCutoff=1.0 * unit.nanometer
+        nonbondedCutoff=1.0 * unit.nanometer,
         constraints=app.HBonds
     )
     
@@ -55,31 +55,31 @@ def run_simulation(modeller, system, temperature=300 * unit.kelvin, equil_steps=
     energy_samples = []
     for step in range(0, md_steps, sample_interval):
         simulation.step(sample_interval)
-        state = simulation.context.getState(getEnergy=True, getKineticEnergy=True)
-        energy = state.getPotentialEnergy() 
-        energy_samples.append(energy)
+        state = simulation.context.getState(getEnergy=True)
+        total_energy = state.getPotentialEnergy()
+        energy_samples.append(total_energy)
     
     final_state = simulation.context.getState(getPositions=True, getEnergy=True)
     return simulation, energy_samples, final_state.getPotentialEnergy()
 
 
-def calculate_gibbs_free_energy(energy_values, temperature=310 * unit.kelvin):
-    """Compute Gibbs free energy from total energy and approximate entropy."""
+def calculate_helmholtz_free_energy(energy_values, temperature=310 * unit.kelvin):
+    """Compute Helmholtz free energy from total energy and approximate entropy."""
     energies = np.array([e.value_in_unit(unit.kilojoule_per_mole) for e in energy_values])
     mean_energy = np.mean(energies) * unit.kilojoule_per_mole
     entropy = calculate_entropy(energy_values, temperature)
-    gibbs_free_energy = mean_energy - temperature * entropy
-    return gibbs_free_energy
+    h_free_energy = mean_energy - temperature * entropy
+    return h_free_energy
 
 
 def calculate_ddg(gfe1, gfe2):
-    """Calculate ΔΔG from two Gibbs free energies."""
+    """Calculate ΔΔH from two Helmholtz free energies."""
     return gfe2 - gfe1
 
 
 def process_ddg_optimized(sequences, pdb_files):
-    """Compute ΔΔG for sequences using improved MD pipeline."""
-    gibbs_free_energies = {}
+    """Compute ΔΔH for sequences using improved MD pipeline."""
+    helmholtz_free_energies = {}
     
     for i, pdb_file in enumerate(pdb_files):
         seq = sequences[i]
@@ -94,19 +94,19 @@ def process_ddg_optimized(sequences, pdb_files):
             sample_interval=1000
         )
         
-        gibbs_free_energy = calculate_gibbs_free_energy(energy_samples, temperature=310*unit.kelvin)
-        gibbs_free_energies[seq] = gibbs_free_energy
+        helmholtz_free_energy = calculate_helmholtz_free_energy(energy_samples, temperature=310*unit.kelvin)
+        helmholtz_free_energies[seq] = helmholtz_free_energy
         
-        print(f"Gibbs Free Energy for {seq[:10]}: {gibbs_free_energy.value_in_unit(unit.kilojoule_per_mole):.3f} kJ/mol")
+        print(f"Helmholtz Free Energy for {seq[:10]}: {helmholtz_free_energy.value_in_unit(unit.kilojoule_per_mole):.3f} kJ/mol")
     
-    # Calculate ΔΔG pairs
+    # Calculate ΔΔH pairs
     ddg_results = {}
     for i in range(len(sequences)):
         for j in range(i + 1, len(sequences)):
             seq1, seq2 = sequences[i], sequences[j]
-            ddg = calculate_ddg(gibbs_free_energies[seq1], gibbs_free_energies[seq2])
+            ddg = calculate_ddg(helmholtz_free_energies[seq1], helmholtz_free_energies[seq2])
             ddg_results[(seq1[:10], seq2[:10])] = ddg
-            print(f"ΔΔG ({seq1[:10]} vs {seq2[:10]}): {ddg.value_in_unit(unit.kilojoule_per_mole):.3f} kJ/mol")
+            print(f"ΔΔH ({seq1[:10]} vs {seq2[:10]}): {ddg.value_in_unit(unit.kilojoule_per_mole):.3f} kJ/mol")
     
     return ddg_results
 
