@@ -126,9 +126,6 @@ def calculate_atom_interaction(index1, index2, positions, nonbonded_force, cutof
     return lj_term, coulomb_energy_kj_per_mol
 
 
-
-
-
 def align_sequences(sequences):
     """Iteratively align sequences using Needleman-Wunsch to build an MSA and return the alignment score matrix."""
     aligned_sequences = [SeqRecord(Seq(seq), id=f"seq_{i+1}") for i, seq in enumerate(sequences)]
@@ -172,18 +169,27 @@ def align_sequences(sequences):
 
     return msa, alignment_matrix
 
-def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, interaction_matrix_2):
-    """Calculate the Potts model energy for two sequences based on alignment scores and physical interactions."""
+def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, interaction_matrix_2, alpha=1.0, beta=1.0):
+    """
+    Calculate Potts-like energy combining evolutionary and physical residue interaction components.
     
-    # Ensure sequences are the same length before proceeding
+    Parameters:
+    - seq1, seq2: Sequences to compare (as Seq or str).
+    - alignment_score: Needleman-Wunsch or MSA-derived alignment score.
+    - interaction_matrix_1, interaction_matrix_2: Physical interaction matrices from OpenMM.
+    - alpha: Weight for the evolutionary (alignment-based) energy term.
+    - beta: Weight for the physical interaction (OpenMM) energy term.
+    
+    Returns:
+    - energy (float): Weighted hybrid Potts-like energy.
+    """
+    
+    # Convert sequences to strings and pad
     max_len = max(len(seq1), len(seq2))
-    seq1 = str(seq1).ljust(max_len, '-')  # Convert to string and pad with gaps ('-')
-    seq2 = str(seq2).ljust(max_len, '-')  # Convert to string and pad with gaps ('-')
+    seq1 = str(seq1).ljust(max_len, '-')
+    seq2 = str(seq2).ljust(max_len, '-')
     
-    # Convert back to Seq objects after padding
-    seq1 = Seq(seq1)
-    seq2 = Seq(seq2)
-     
+    # Pad interaction matrices to match sequence length
     interaction_matrix_1 = np.pad(interaction_matrix_1, ((0, max_len - interaction_matrix_1.shape[0]), 
                                                          (0, max_len - interaction_matrix_1.shape[1])), 
                                   mode='constant', constant_values=0)
@@ -192,28 +198,29 @@ def calculate_potts_energy(seq1, seq2, alignment_score, interaction_matrix_1, in
                                                          (0, max_len - interaction_matrix_2.shape[1])), 
                                   mode='constant', constant_values=0)
     
-    # Initialize the energy to 0
     energy = 0
-    seq_length = len(seq1)
+    seq_length = max_len
 
-    # Iterate over each pair of positions in the sequences
+    # Iterate over residue pairs
     for i in range(seq_length):
         for j in range(i + 1, seq_length):
-            # Skip if there's a gap ('-') in either sequence position
             if seq1[i] == '-' or seq2[i] == '-' or seq1[j] == '-' or seq2[j] == '-':
-                continue  # Skip this pair if there is a gap
+                continue  # skip gap positions
 
-            # Interaction terms based on sequence alignment (evolutionary)
+            # Evolutionary term (very simple, could be replaced with more nuanced measure)
+            evo_energy = 0
             if seq1[i] != seq2[i] and seq1[j] != seq2[j]:
-               energy += alignment_score / seq_length  # Evolutionary term (alignment score)
+                evo_energy = alignment_score / seq_length
 
-            # Interaction terms based on physical residue-residue interactions (from OpenMM)
-            energy += interaction_matrix_1[i, j]  # Physical interaction term from first PDB
-            energy += interaction_matrix_2[i, j]  # Physical interaction term from second PDB
+            # Physical interaction energy
+            phys_energy = interaction_matrix_1[i, j] + interaction_matrix_2[i, j]
+
+            # Weighted total energy
+            energy += alpha * evo_energy + beta * phys_energy
 
     return energy
 
-def calculate_msa_fitness(msa, pdb_files, alignment_matrix, max_workers=4):
+def calculate_msa_fitness(msa, pdb_files, alignment_matrix, alpha=1.0, beta=1.0, max_workers=4):
     """Calculate fitness energies for sequences in an MSA using both physical and evolutionary interactions."""
     fitness_results = {}
     num_sequences = len(msa)
@@ -242,9 +249,15 @@ def calculate_msa_fitness(msa, pdb_files, alignment_matrix, max_workers=4):
                 # Submit Potts energy calculation for each pair of sequences and their corresponding interaction matrices
                 alignment_score = alignment_matrix[i, j]
                 futures[(i, j)] = executor.submit(
-                            calculate_potts_energy, seq1, seq2, alignment_score,
-                            interaction_matrices[pdb_file_1], interaction_matrices[pdb_file_2]
-                            )
+                                  calculate_potts_energy,
+                                  seq1, seq2,
+                                  alignment_score,
+                                  interaction_matrices[pdb_file_1],
+                                  interaction_matrices[pdb_file_2],
+                                  alpha,  # pass weight
+                                  beta    # pass weight
+                                  )
+
 
         # Collect results from futures
         for pair, future in futures.items():
@@ -258,7 +271,7 @@ def calculate_msa_fitness(msa, pdb_files, alignment_matrix, max_workers=4):
 
     return fitness_results
 
-def process_sequences_and_pdbs(sequences, pdb_files):
+def process_sequences_and_pdbs(sequences, pdb_files, alpha=1.0, beta=1.0):
     """Main function to take sequences and PDB files, and calculate MSA fitness."""
     # Step 1: Align the sequences to generate MSA and alignment score matrix
     msa_alignment, alignment_matrix = align_sequences(sequences)
