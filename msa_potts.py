@@ -24,7 +24,7 @@ def load_pdb_structure(pdb_file):
     
     forcefield = app.ForceField('amber99sb.xml', 'amber99_obc.xml')
     modeller = app.Modeller(pdb.topology, pdb.positions)
-    system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.NoCutoff)  # Use NoCutoff instead of CutoffPeriodic
+    system = forcefield.createSystem(modeller.topology, nonbondedMethod=app.PME)  # Use NoCutoff instead of CutoffPeriodic
     return modeller, system
 
 
