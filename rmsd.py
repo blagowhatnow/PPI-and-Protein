@@ -1,3 +1,6 @@
+#Experimental code for computing pairwise RMSD-s from structure
+# Might not be exact/correct. Left for further revision.
+
 from openmm.app import PDBFile
 from openmm import unit
 import numpy as np
